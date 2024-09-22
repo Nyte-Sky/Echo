@@ -34,13 +34,13 @@ audio_manager.initialize_audio()
 notebook = ttk.Notebook(root)
 
 # Create the "Board" tab
-board_tab = BoardTab(notebook, data["buttons"][0])
+board_tab = BoardTab(notebook, data["buttons"])
 # Add this line after creating the BoardTab
 root.bind('<KeyPress>', lambda event: board_tab.handle_keypress(event))
 notebook.add(board_tab, text="Board")
 
 # Create the "Setup" tab
-setup_tab = SetupTab(notebook, data["buttons"][0], data, keylist)  # Pass keylist here
+setup_tab = SetupTab(notebook, data["buttons"], data, keylist)  # Pass keylist here
 notebook.add(setup_tab, text="Setup")
 
 # Pack the notebook
