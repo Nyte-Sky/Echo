@@ -1,0 +1,10 @@
+{
+    "buttons": [
+        {
+            "name": "Button 1",
+            "sound_path": "C:/Users/nikos/Documents/Other/Python/Soundboard/orb.ogg",
+            "volume": 0.5,
+            "keybind": "TAB"
+        }
+    ]
+}
