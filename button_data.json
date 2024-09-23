@@ -1,10 +1,23 @@
 {
     "buttons": [
         {
-            "name": "Button 1",
+            "name": "Ding",
             "sound_path": "C:/Users/nikos/Documents/Other/Python/Soundboard/orb.ogg",
             "volume": 0.5,
-            "keybind": "TAB"
+            "style": "Square.TButton",
+            "keybind": "A"
+        },
+        {
+            "name": "Splash",
+            "sound_path": "C:/Users/nikos/Documents/Other/Python/Soundboard/splash.ogg",
+            "volume": 0.5,
+            "style": "RectSlim.TButton",
+            "keybind": "D"
         }
-    ]
+    ],
+    "settings": {
+        "board-bg-image-path": "C:/Users/nikos/Documents/Other/Python/Soundboard/dragone.jpg",
+        "setup-bg-image-path": "C:/Users/nikos/Documents/Other/Python/Soundboard/dragone.jpg",
+        "bg-images-shown": true
+    }
 }
