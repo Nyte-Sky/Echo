@@ -135,9 +135,9 @@ class SetupTab(ttk.Frame):
             cancel_button.pack(side="right", padx=(5, 20), pady=5)
 
     def change_image_confirm(self, image_path, selection, popup):
-        print(type(selection.get()))
+        # print(type(selection.get()))
         if selection.get() == "Both":
-            print("changing")
+            # print("changing")
             self.settings_data["setup-bg-image-path"] = image_path
             self.settings_data["board-bg-image-path"] = image_path
             self.board_tab.reload_bg_image()
@@ -240,8 +240,8 @@ class SetupTab(ttk.Frame):
         label = tk.Label(popup, text=f"Current Keybind: {current_keybind}", fg="blue")
         label.pack(pady=5)
 
-        clashLabel = tk.Label(popup, text="", fg="red")
-        clashLabel.pack()
+        self.clashLabel = tk.Label(popup, text="", fg="red")
+        self.clashLabel.pack()
 
         info_label = tk.Label(popup, text="Press a new key or click 'Clear Keybind'.")
         info_label.pack(pady=5)
@@ -255,7 +255,7 @@ class SetupTab(ttk.Frame):
         cancel_button = tk.Button(popup, text="Cancel", command=popup.destroy)
         cancel_button.pack(side="right", padx=(5, 20), pady=5)
 
-        popup.bind('<KeyPress>', lambda event: self.update_keybind(event, label, clashLabel, button_data))
+        popup.bind('<KeyPress>', lambda event: self.update_keybind(event, label, button_data, popup.winfo_children()))
 
         popup.focus_set()  # Set focus to the popup to capture key events
 
@@ -263,44 +263,109 @@ class SetupTab(ttk.Frame):
         keybinds = []
         for button in self.button_data_list:
             keybind = button.get("keybind")
-            if keybind and keybind not in keybinds:  # Check if keybind is not empty and not already in the list
+            if keybind:  # Check if keybind is not empty
                 keybinds.append(keybind)
         return keybinds
 
     def check_if_keybind_is_valid(self, keybind, button_data):
         used_keybinds = self.get_used_keybinds()
-        return (keybind in used_keybinds and not keybind == button_data["keybind"])
+        print(used_keybinds)
+        print(keybind)
+        if button_data["keybind"] in used_keybinds:
+            used_keybinds.remove(button_data["keybind"])
+        print(used_keybinds)
+        return keybind in used_keybinds
         
+    def change_keybind(self, button_data):
+        # Create a popup window for keybind assignment
+        self.popup = tk.Toplevel(self)
+        self.popup.title("Change Keybind")
+        self.popup.geometry("260x175")
 
-    def update_keybind(self, event, label, clashLabel, button_data):
+        # Store button data and popup widget
+        self.button_data = button_data
+
+        # Initialize dictionary to store keybind-related widgets
+        self.keychange_widgets = {}
+
+        current_keybind = button_data.get("keybind", "")
+        if current_keybind.isalpha() and len(current_keybind) == 1:
+            current_keybind = current_keybind.upper()  # Show in uppercase if it's a letter
+
+        # Store all relevant widgets in the keychange_widgets dictionary
+        self.keychange_widgets['keybind_label'] = tk.Label(self.popup, text=f"Current Keybind: {current_keybind}", fg="blue")
+        self.keychange_widgets['keybind_label'].pack(pady=5)
+
+        self.keychange_widgets['clash_label'] = tk.Label(self.popup, text="", fg="red")
+        self.keychange_widgets['clash_label'].pack()
+
+        info_label = tk.Label(self.popup, text="Press a new key or click 'Clear Keybind'.")
+        info_label.pack(pady=5)
+
+        clear_button = tk.Button(self.popup, text="Clear Keybind", command=self.clear_keybind)
+        clear_button.pack(pady=5)
+
+        self.keychange_widgets["confirm_button"] = tk.Button(self.popup, text="Confirm", command=self.confirm_keybind)
+        self.keychange_widgets["confirm_button"].pack(side="left", padx=(20, 5), pady=5)
+
+        cancel_button = tk.Button(self.popup, text="Cancel", command=self.popup.destroy)
+        cancel_button.pack(side="right", padx=(5, 20), pady=5)
+
+        # Bind keypress event to the popup window
+        self.popup.bind('<KeyPress>', self.update_keybind)
+
+        self.popup.focus_set()  # Set focus to the popup to capture key events
+
+    def get_used_keybinds(self):
+        keybinds = [button.get("keybind") for button in self.button_data_list if button.get("keybind")]
+        return keybinds
+
+    def check_if_keybind_is_valid(self, keybind):
+        used_keybinds = self.get_used_keybinds()
+        if self.button_data["keybind"] in used_keybinds:
+            used_keybinds.remove(self.button_data["keybind"])
+        return keybind in used_keybinds
+
+    def update_keybind(self, event):
         # Update the label with the new key pressed
-        new_key = event.keysym
+        new_key = event.keysym.upper()  # Always store as uppercase
 
-        if self.check_if_keybind_is_valid(new_key.upper(), button_data):
+        # Check if the new keybind is already in use
+        if self.check_if_keybind_is_valid(new_key):
             self.valid_key = False
-            clashLabel.config(text="This keybind is already in use.")
+            self.keychange_widgets['clash_label'].config(text="This keybind is already in use.")
+            self.keychange_widgets["confirm_button"].config(state="disabled")
         else:
             self.valid_key = True
-            clashLabel.config(text="")
+            self.keychange_widgets['clash_label'].config(text="")
+            self.keychange_widgets["confirm_button"].config(state="normal")
 
-        if new_key.isalpha() and len(new_key) == 1:
-            new_key = new_key.upper()  # Show in uppercase if it's a letter
-
-        label.config(text=f"Current Keybind: {new_key}")  # Update displayed keybind
+        # Update displayed keybind
+        self.keychange_widgets['keybind_label'].config(text=f"Current Keybind: {new_key}")
         self.new_keybind = new_key
 
-    def clear_keybind(self, popup, label, button_data):
-        # Update the label with the new key pressed
-        new_key = ""
+    def clear_keybind(self):
+        # Mock event to simulate clearing the keybind
+        class MockEvent:
+            def __init__(self, keysym):
+                self.keysym = keysym
 
-        label.config(text=f"Current Keybind: {new_key}")  # Update displayed keybind
-        self.new_keybind = new_key
+        # Clear the keybind and update UI
+        self.new_keybind = ""
+        self.keychange_widgets['keybind_label'].config(text=f"Current Keybind: {self.new_keybind}")
+        self.update_keybind(MockEvent(""))
 
-    def confirm_keybind(self, popup, button_data):
-        button_data["keybind"] = getattr(self, 'new_keybind', "").upper()  # Store as uppercase
+    def confirm_keybind(self):
+        # Save the new keybind in button data
+        self.button_data["keybind"] = self.new_keybind.upper()  # Store as uppercase
+
+        # Update keybind label in the corresponding setup frame
         for setup_frame, bd, label, keybind_label in self.setup_frames:
-            if bd == button_data:
-                keybind_label.config(text=button_data["keybind"])  # Update displayed keybind
+            if bd == self.button_data:
+                keybind_label.config(text=self.button_data["keybind"])
                 break
-        json_manager.save_data(self.data)  # Save updated data
-        popup.destroy()  # Close the popup
+
+        # Save updated data and close the popup
+        json_manager.save_data(self.data)
+        self.popup.destroy()
+

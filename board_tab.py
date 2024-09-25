@@ -73,12 +73,12 @@ class BoardTab(ttk.Frame):
             self.image = ImageTk.PhotoImage(self.original_image)
             # self.image_label = tk.Label(self.main_area, image=self.image, bg="white")
             self.image_label.config(image=self.image)
-            print("Reloading image - (re)showing")
+            # print("Reloading image - (re)showing")
         else:
             self.original_image = None
             self.image = None
             self.rezised_image = None
-            print("Reloading image - (re)setting image to none")
+            # print("Reloading image - (re)setting image to none")
 
     def setup_image(self):
         """Load and optionally resize the image to be displayed in the bottom-right corner."""
