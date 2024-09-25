@@ -269,11 +269,11 @@ class SetupTab(ttk.Frame):
 
     def check_if_keybind_is_valid(self, keybind, button_data):
         used_keybinds = self.get_used_keybinds()
-        print(used_keybinds)
-        print(keybind)
+        # print(used_keybinds)
+        # print(keybind)
         if button_data["keybind"] in used_keybinds:
             used_keybinds.remove(button_data["keybind"])
-        print(used_keybinds)
+        # print(used_keybinds)
         return keybind in used_keybinds
         
     def change_keybind(self, button_data):
