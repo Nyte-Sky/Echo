@@ -6,25 +6,20 @@ import audio_manager
 import os
 from board_tab import BoardTab
 from setup_tab import SetupTab
-
-# FInd if self.image_label exists in setup.py line 94 so we can show/hid bg image on toggle.
-
-# Load keylist from JSON file
-def load_keylist():
-    keylist_file = "keylist.json"
-    if os.path.exists(keylist_file):
-        with open(keylist_file, 'r') as f:
-            return json.load(f)
-    else:
-        return {}
+from sound_importer import SoundImporter
+import oofKey
 
 # Load keylist and data
-keylist = load_keylist()
+keylist = {}
+
+json_manager.check_startup()
+
 data = json_manager.load_data()
 
 # Create the main window
 root = tk.Tk()
 root.title("Echo")
+root.iconbitmap(json_manager.icon_file, default=json_manager.icon_file)
 root.geometry("650x600")
 
 # Initialize audio
@@ -43,8 +38,22 @@ notebook.add(board_tab, text="Board")
 setup_tab = SetupTab(notebook, data["buttons"], data["settings"], data, keylist, board_tab)  # Pass keylist here
 notebook.add(setup_tab, text="Setup")
 
+sound_importer = SoundImporter(notebook, data, data["settings"])
+notebook.add(sound_importer, text="Import Sounds")
+
+OutOfFocusHandler = oofKey.OOFKeyHandler(setup_tab, board_tab)
+
 # Pack the notebook
 notebook.pack(expand=True, fill="both")
+
+def on_focus_in(event):
+    OutOfFocusHandler.simulating = False
+
+def on_focus_out(event):
+    OutOfFocusHandler.simulating= True
+
+root.bind("<FocusIn>", on_focus_in)
+root.bind("<FocusOut>", on_focus_out)
 
 # Start the main loop
 root.mainloop()

@@ -12,6 +12,7 @@ class SetupTab(ttk.Frame):
         self.button_data_list = button_data_list
         self.data = data
         self.key_list = keylist
+        self.board_tab = board_tab
 
         self.image_vis = tk.BooleanVar(value=settings_data["bg-images-shown"])
 
@@ -73,15 +74,16 @@ class SetupTab(ttk.Frame):
             # Convert to uppercase if it's a regular letter (A-Z)
             if keybind_display.isalpha() and len(keybind_display) == 1:
                 keybind_display = keybind_display.upper()
-
-            # Create the keybind label in blue
-            keybind_label = tk.Label(setup_frame, text=keybind_display, bg="#e6e6e6", fg="blue")
-            keybind_label.pack(side="left")  # Display keybind in blue
+            
+            if keybind_display != "":
+                # Create the keybind label in blue
+                keybind_label = tk.Label(setup_frame, text=keybind_display, bg="#e6e6e6", fg="blue")
+                keybind_label.pack(side="left")  # Display keybind in blue
 
             if not valid_file_path(button_data):
                 test_label = tk.Label(setup_frame, text="Invalid sound path", bg="#e6e6e6", fg="red")
                 test_label.pack(side="left", padx=5)
-
+            
             # Store the setup frame and its related data
             self.setup_frames.append((setup_frame, button_data, label, keybind_label, None))
 
@@ -109,26 +111,136 @@ class SetupTab(ttk.Frame):
         change_image_button = tk.Button(self.top_bar, text="Change image", bg="#e6e6e6", relief="solid", bd=1, command=lambda: self.image_manager.change_image_popup())
         change_image_button.pack(side=tk.LEFT)
 
+        muted_checkbox = tk.Button(self.top_bar, text="Muted: " + ("\u2717" if self.board_tab.allow_keypresses else "\u2713"),
+                                bg="#e6e6e6", relief="solid", bd=1, pady=0,
+                                command=lambda: self.toggle_mute(muted_checkbox))
+        muted_checkbox.pack(side=tk.RIGHT)
+
+        oof_key_sim = tk.Button(self.top_bar, text="Listen for keybinds while windowed: " + ("\u2713" if self.board_tab.oof_key_sims else "\u2717"),
+                                bg="#e6e6e6", relief="solid", bd=1, pady=0,
+                                command=lambda: self.toggle_oof_key_sim(oof_key_sim))
+        oof_key_sim.pack(side=tk.RIGHT)
+               
+    def toggle_oof_key_sim(self, button):
+        self.board_tab.oof_key_sims = not self.board_tab.oof_key_sims
+        self.settings_data["out-of-focus-input"] = self.board_tab.oof_key_sims
+        json_manager.save_data(self.data)
+        button.config(text="Listen for keybinds while windowed: " + ("\u2713" if self.board_tab.oof_key_sims else "\u2717"))
+               
+    def toggle_mute(self, button):
+        self.board_tab.allow_keypresses = not self.board_tab.allow_keypresses
+        button.config(text="Muted: " + ("\u2717" if self.board_tab.allow_keypresses else "\u2713"))
+
     def create_dropdown(self, setup_frame, dropdown_var, button_data):
         dropdown_menu = ttk.OptionMenu(setup_frame, dropdown_var, "\u22EF",
-                                         "Change Sound", "Change Keybind", "Change Volume", "Rename", "Delete",
+                                         "Sound", "Keybind", "Volume", "Type", "Rename", "Delete", 
                                          command=lambda action: self.dropdown_action(action, button_data, dropdown_var))
         dropdown_menu.pack(side="right", padx=1)
 
     def dropdown_action(self, action, button_data, dropdown):
-        if action == "Change Sound":
+        if action == "Sound":
             self.button_manager.change_sound(button_data)
         elif action == "Rename":
             self.button_manager.rename_button(button_data)
         elif action == "Delete":
             self.button_manager.delete_button(button_data)
-        elif action == "Change Keybind":
+        elif action == "Keybind":
             self.button_manager.change_keybind(button_data)
-        elif action == "Change Volume":
+        elif action == "Volume":
             self.volume_manager.change_volume(button_data)
+        elif action == "Appearance":
+            self.button_manager.change_appearance(button_data)
+        elif action == "Type":
+            self.button_manager.change_type(button_data)
         
         dropdown.set("\u22EF")
+    
+class TypeChange(tk.Toplevel):
+    def __init__(self, root_window, button_data, data):
+        super().__init__(root_window)
+        self.button_data = button_data
+        self.data = data
 
+        # Variable to hold the selection of the radio buttons
+        self.selected_option = tk.StringVar(value=button_data["type"])  # Default value
+        
+        # Create two radio buttons (mutually exclusive)
+        self.radio1 = tk.Radiobutton(self, text="Short - Plays once until finished, will overlap", variable=self.selected_option, value="short")
+        self.radio1.pack(pady=(5,0))
+        
+        self.radio2 = tk.Radiobutton(self, text="Long - Plays until clicked again or finished, will not overlap", variable=self.selected_option, value="long")
+        self.radio2.pack(pady=(0,5))
+
+        self.radio3 = tk.Radiobutton(self, text="Repeat - Repeats until clicked again, will not overlap", variable=self.selected_option, value="repeat")
+        self.radio3.pack(pady=(0,5))
+    
+        self.radio4 = tk.Radiobutton(self, text="Music - Plays looped until other music button is clicked, will not overlap", variable=self.selected_option, value="music")
+        self.radio4.pack(pady=(0,5))
+        
+        # Create Confirm and Cancel buttons
+        self.confirm_button = tk.Button(self, text="Confirm", command=self.on_confirm)
+        self.confirm_button.pack(pady=5)
+        
+        self.cancel_button = tk.Button(self, text="Cancel", command=self.on_cancel)
+        self.cancel_button.pack(pady=5)
+
+    def on_confirm(self):
+        # Handle the confirm action (print or pass the selected value)
+        choice = self.selected_option.get()
+        self.button_data["type"] = choice
+        audio_manager.stop_continuous_audio(self.button_data["sound_path"])
+        json_manager.save_data(self.data)
+        self.destroy()  # Close the window
+
+    def on_cancel(self):
+        self.destroy()  # Close the window when cancel is clicked
+    
+class AppearenceChange(tk.Toplevel):
+    def __init__(self, root_window, button_data, data):
+        super().__init__(root_window)
+        self.button_data = button_data
+        self.data = data
+        self.styles = json_manager.load_styles()
+
+        self.title("Change Appearance")
+        self.geometry("400x260")
+
+        # Create and configure the button widget in the popup
+        self.appearance_button = ttk.Button(self, style=button_data["style"], text=button_data["name"])
+        self.appearance_button.pack(anchor="center", padx=5, pady=5)
+
+        self.appearance_style_frame = tk.Frame(self)
+        self.appearance_style_frame.pack(anchor="center")
+
+        # Create a label for the style
+        self.style_label = tk.Label(self.appearance_style_frame, text="Style: ")
+        self.style_label.pack(side=tk.LEFT, padx=0)
+
+        # Dropdown menu for style options
+        self.appearance_dropdown_var = tk.StringVar()  # Create a StringVar to track the selected option
+        self.style_dropdown = ttk.OptionMenu(self.appearance_style_frame, self.appearance_dropdown_var, button_data["style"],
+                                            *[style["name"] for style in self.styles], "New",
+                                            command=lambda action: self.appearance_dropdown_action(action))
+        self.style_dropdown.pack(side=tk.LEFT, padx=0)
+
+        # Set focus to the popup window
+        self.focus()
+
+    def appearance_dropdown_action(self, style):
+        if style.lower() == "new":
+            return
+        self.appearance_button.config(style=style)
+
+
+
+class sidebysidewidgets(tk.Frame):
+    def __init__(self, parent, widgets=None):
+        super.__init__(parent)
+        if widgets: self.add_widgets(widgets)
+    
+    def add_widgets(self, widgets: list[tk.Widget]):
+        for widget in widgets:
+            widget.pack(side=tk.LEFT, padx=0)
 
 class VolumeManager:
     def __init__(self, audio_manager, json_manager, data, root_win):
@@ -148,16 +260,21 @@ class VolumeManager:
         volume_scale.set(current_volume * 10)  # Assuming volume is stored as a fraction (0.0 - 1.0)
         volume_scale.pack()
 
-        play_button = tk.Button(popup, text="Play", command=lambda: audio_manager.play_audio(button_data["sound_path"], volume_scale.get() / 10))
+        play_button = tk.Button(popup, text="Play", command=lambda: audio_manager.play_continuous_audio(button_data["sound_path"], volume_scale.get() / 10))
         play_button.pack(pady=5)
 
         confirm_button = tk.Button(popup, text="Confirm", command=lambda: self.confirm_volume(popup, button_data, volume_scale.get() / 10))
         confirm_button.pack(side="left", padx=(20, 5), pady=5)
 
-        cancel_button = tk.Button(popup, text="Cancel", command=popup.destroy)
+        cancel_button = tk.Button(popup, text="Cancel", command=lambda: self.cancel(button_data, popup))
         cancel_button.pack(side="right", padx=(5, 20), pady=5)
+    
+    def cancel(self, button_data, popup: tk.Toplevel):
+        audio_manager.stop_continuous_audio(button_data["sound_path"])
+        popup.destroy()
 
     def confirm_volume(self, popup, button_data, new_volume):
+        audio_manager.stop_continuous_audio(button_data["sound_path"])
         button_data["volume"] = new_volume
         self.json_manager.save_data(self.data)  # Save updated data
         popup.destroy()  # Close the popup
@@ -172,6 +289,7 @@ class ButtonManager:
         self.root_window = root_win
         
         self.keybind_widgets = {}
+        self.appearance_widgets = {}
 
     def add_button(self):
         button_data = {
@@ -204,16 +322,17 @@ class ButtonManager:
             if border_frame:
                 border_frame.destroy()
         self.setup_tab.create_frames()
-
         
     def change_sound(self, button_data):
-        file_path = filedialog.askopenfilename(filetypes=[("Audio Files", "*.mp3 *.wav *.ogg"), ("All Files", "*.*")])
+        file_path = filedialog.askopenfilename(filetypes=[("All Files", "*.*")])
         if file_path:
             button_data["sound_path"] = file_path
             self.update_setup_frame()
             json_manager.save_data(self.data)
             
-        
+    def change_appearance(self, button_data):
+        AppearenceChange(self.root_window, button_data, self.data)
+
     def delete_button(self, button_data):
         result = messagebox.askyesno("Delete Button", "Are you sure you want to delete this button?")
         if result:
@@ -225,8 +344,10 @@ class ButtonManager:
                         border_frame.destroy()
                     self.board_tab.update_buttons()
                     break
-            print(self.data)
             json_manager.save_data(self.data)
+    
+    def change_type(self, button_data):
+        TypeChange(self.root_window, button_data, self.data)
 
     def change_keybind(self, button_data):
         # Create a popup window for keybind assignment
@@ -281,7 +402,6 @@ class ButtonManager:
         
         json_manager.save_data(self.data)
         self.popup.destroy()
-
     
     def clear_keybind(self):
         # Clear the keybind and update UI
@@ -291,8 +411,9 @@ class ButtonManager:
 
     # Mock event to simulate clearing the keybind
     class MockEvent:
-        def __init__(self, keysym):
+        def __init__(self, keysym, fake=False):
             self.keysym = keysym
+            self.fake = fake
 
     def update_keybind(self, event):
         new_key = event.keysym.upper()
@@ -311,8 +432,11 @@ class ButtonManager:
         self.new_keybind = new_key
 
     def check_keybind_conflict(self, new_key):
-        used_keybinds = [btn["keybind"] for btn in self.button_data_list if btn.get("keybind")]
+        used_keybinds = self.get_used_keybinds()
         return new_key in used_keybinds
+    
+    def get_used_keybinds(self):
+        return [btn["keybind"] for btn in self.button_data_list if btn.get("keybind")]
 
 class ImageManager:
     def __init__(self, settings_data, image_vis_var, main_area, top_bar, button_data_list, board_tab, data, root_win):
@@ -375,7 +499,10 @@ class ImageManager:
         popup.destroy()  # Close the popup
 
     def setup_image(self, fixed_size=(200, 200)):
-        self.original_image = Image.open(self.settings_data["setup-bg-image-path"])
+        if self.settings_data["setup-bg-image-path"] != "":
+            self.original_image = Image.open(self.settings_data["setup-bg-image-path"])
+        else:
+            self.original_image = Image.new("RGBA", (1, 1), (255, 255, 255, 0))  # Fully transparent
         self.resized_image = self.original_image.resize(fixed_size)
         self.image = ImageTk.PhotoImage(self.resized_image)
         self.image_label = tk.Label(self.main_area, image=self.image, bg="white")
@@ -383,7 +510,10 @@ class ImageManager:
     
     def reload_bg_image(self, forced=False):
         if self.image_vis.get() or forced:
-            self.original_image = Image.open(self.settings_data["setup-bg-image-path"])
+            if self.settings_data["setup-bg-image-path"] != "":
+                self.original_image = Image.open(self.settings_data["setup-bg-image-path"])
+            else:
+                self.original_image = Image.new("RGBA", (1, 1), (255, 255, 255, 0))  # Fully transparent
             self.resized_image = self.original_image.resize((200, 200))
             self.image = ImageTk.PhotoImage(self.resized_image)
             if self.image_label:
